@@ -1,10 +1,8 @@
-# Build Authify: A JWT Auth API
+# Build Sprintr: Kanban Project Management API
 
 ### Project Description
 
-You are going to build Authify, a small but powerful authentication API that other apps can plug into. Users can register, log in, and log out. When they log in, they get two tokens: an access token for making requests and a refresh token for getting a new access token when the old one expires.
-
-You will also build a few locked endpoints to prove your security works. If someone is not logged in, they should get blocked. If they are logged in, they should get through smoothly. No magic shortcuts. You will write the endpoints using APIView so you can see each step clearly.
+You are going to build Sprintr, a Kanban board API similar to Trello or Jira. You will use the secure Authify authentication template to handle users. Then, you will build a deeply nested database architecture: Projects contain Boards, Boards contain Columns, and Columns contain Cards. You will write nested serializers so that requesting a Board returns all of its Columns and Cards in one beautiful JSON response. You will also write custom raw APIViews to handle creating and moving these nested items securely.
 
 ## Tech Stack
 
