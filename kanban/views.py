@@ -13,11 +13,11 @@ from rest_framework.permissions import IsAuthenticated
 # Import the Django built-in Http404 exception to trigger neat 404 Not Found responses easily
 from django.http import Http404
 
-# Import our Project model from models.py inside the current app directory
-from kanban.models import Project
+# Import our Project and Board models from models.py inside the current app directory
+from kanban.models import Project, Board
 
-# Import our ProjectSerializer from serializers.py inside the current app directory
-from kanban.serializers import ProjectSerializer
+# Import our ProjectSerializer and BoardSerializer from serializers.py inside the current app directory
+from kanban.serializers import ProjectSerializer, BoardSerializer
 
 
 # --- PROJECT LIST API VIEW ---
@@ -153,3 +153,134 @@ class ProjectDetailAPIView(APIView):
         # We return a Response with an HTTP 204 No Content status.
         # 204 is the standard status code indicating a successful deletion with no body content returned.
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# --- BOARD LIST API VIEW ---
+# This class handles requests targeting the collection of boards (listing them and creating a new one).
+class BoardListAPIView(APIView):
+    # We assign [IsAuthenticated] to permission_classes to ensure that only logged-in users
+    # with a valid JSON Web Token (JWT) can access this endpoint!
+    permission_classes = [IsAuthenticated]
+
+    # --- GET METHOD ---
+    # This method responds to HTTP GET requests. It retrieves and lists all existing boards.
+    def get(self, request):
+        # We query the database to fetch every single Board record currently saved.
+        # Board.objects.all() executes a SELECT * FROM kanban_board query.
+        boards = Board.objects.all()
+
+        # We pass our list of board objects into the BoardSerializer translator.
+        # We set many=True because we are translating a list of multiple board records, not a single one.
+        serializer = BoardSerializer(boards, many=True)
+
+        # We return the translated JSON data inside a Response object with status 200 OK.
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # --- POST METHOD ---
+    # This method responds to HTTP POST requests. It allows logged-in users to create a brand new board.
+    def post(self, request):
+        # We extract the project ID value from the client's request data payload.
+        # This ID specifies which parent Project this new board should belong to.
+        project_id = request.data.get('project')
+
+        # We manually verify if a 'project' field was even sent in the request payload.
+        if not project_id:
+            # If the project field is missing, return a validation error with status 400 Bad Request.
+            return Response(
+                {"project": ["This field is required to create a board."]},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # We verify that the specified project ID actually exists in our Project database table.
+        try:
+            project = Project.objects.get(pk=project_id)
+        except Project.DoesNotExist:
+            # If the query fails, it means the project ID is invalid or doesn't exist.
+            # We return a clear error response explaining that the parent project wasn't found.
+            return Response(
+                {"project": ["The specified parent project does not exist."]},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # We pass the raw data sent by the client into the BoardSerializer.
+        # This prepares the serializer to validate and translate the client's inputs.
+        serializer = BoardSerializer(data=request.data)
+
+        # We call serializer.is_valid() to check if the incoming data meets all our constraints (e.g., name is provided).
+        if serializer.is_valid():
+            # If the data is valid, we call serializer.save() to write the new board record into the database.
+            serializer.save()
+
+            # We return the newly created and saved board's serialized data back to the client.
+            # We return a status code of 201 Created to signify a successful resource creation.
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        # If validation fails, return the error details with a 400 Bad Request status.
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# --- BOARD DETAIL API VIEW ---
+# This class handles requests targeting a specific individual board by its unique ID (GET, PUT, and DELETE).
+class BoardDetailAPIView(APIView):
+    # We require authentication so that only registered users can view, update, or delete board details.
+    permission_classes = [IsAuthenticated]
+
+    # --- GET OBJECT HELPER ---
+    # A helper method to fetch a single board by its ID primary key, or raise a 404 error if it doesn't exist.
+    def get_object(self, pk):
+        # We place our query inside a try-except block to handle cases where a user requests an ID that doesn't exist.
+        try:
+            # We look up the Board record where the primary key (pk) matches the pk variable in the URL.
+            return Board.objects.get(pk=pk)
+        except Board.DoesNotExist:
+            # If no Board record matches the given ID, Django raises a DoesNotExist exception.
+            # We intercept this and raise Http404, which DRF automatically translates to a 404 response.
+            raise Http404
+
+    # --- GET METHOD ---
+    # This method responds to HTTP GET requests for a single board (e.g., GET /api/boards/5/).
+    # Note: When returning the board, the nested BoardSerializer will automatically list the columns and cards!
+    def get(self, request, pk):
+        # We call our get_object helper to fetch the board or raise a 404 if it is missing.
+        board = self.get_object(pk)
+
+        # We pass the single board record to our BoardSerializer.
+        # This will output a beautiful nested JSON payload: Board -> Columns -> Cards!
+        serializer = BoardSerializer(board)
+
+        # We return the translated JSON board data with a standard 200 OK status.
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # --- PUT METHOD ---
+    # This method responds to HTTP PUT requests to update an existing board (e.g., PUT /api/boards/5/).
+    def put(self, request, pk):
+        # We fetch the specific board we want to edit or fail with a 404 if it does not exist.
+        board = self.get_object(pk)
+
+        # We feed the existing board object AND the new request data into our serializer.
+        # partial=True allows the client to send only the fields they want to change.
+        serializer = BoardSerializer(board, data=request.data, partial=True)
+
+        # We check if the updated data is valid.
+        if serializer.is_valid():
+            # If valid, we save the changes to the database.
+            serializer.save()
+            # Return the updated serialized board data with a 200 OK status.
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        # If validation fails, return the error details with a 400 Bad Request status.
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # --- DELETE METHOD ---
+    # This method responds to HTTP DELETE requests to delete a board (e.g., DELETE /api/boards/5/).
+    def delete(self, request, pk):
+        # We fetch the board or raise a 404 Not Found if the board ID does not exist in our database.
+        board = self.get_object(pk)
+
+        # We call the model's delete() method to remove the board row from our database.
+        # Note: Thanks to models.CASCADE we defined, deleting this board will also delete all of its columns and cards!
+        board.delete()
+
+        # We return a Response with an HTTP 204 No Content status.
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
