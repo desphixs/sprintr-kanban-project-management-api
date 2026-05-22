@@ -49,6 +49,11 @@ INSTALLED_APPS = [
     # badges, and security clearance.
     'accounts',
     
+    # 'kanban' is our newly created custom application designed to handle the core features of our Kanban board.
+    # Think of it like the warehouse and operational department of our system where we manage the project
+    # containers, boards, structural workflow columns, and individual task cards.
+    'kanban',
+    
     # 'rest_framework_simplejwt.token_blacklist' is our security revocation registry.
     # Think of it like a "revoked keycards list" at a high-security facility.
     # When a user logs out, their token is thrown into this blacklist database table
