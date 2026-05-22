@@ -29,4 +29,10 @@ urlpatterns = [
     # will automatically be preceded by '/api/auth/'.
     # For example, our registration path becomes: 'api/auth/register/'
     path('api/auth/', include('accounts.urls')),
+
+    # We register and include all the API URL endpoints from our newly built 'kanban' application.
+    # By prefixing this path with 'api/', every endpoint defined inside 'kanban/urls.py'
+    # (like 'projects/' and 'projects/<int:pk>/') will be resolved at '/api/projects/' and '/api/projects/<int:pk>/' respectively!
+    path('api/', include('kanban.urls')),
 ]
+
