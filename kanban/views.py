@@ -412,3 +412,68 @@ class CardListAPIView(APIView):
         # If validation fails, return the error details with a 400 Bad Request status.
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
+# --- CARD DETAIL API VIEW ---
+# This class handles requests targeting a specific individual card by its unique ID (GET, PUT, and DELETE).
+class CardDetailAPIView(APIView):
+    # We require authentication so that only registered users can view, update, or delete card details.
+    permission_classes = [IsAuthenticated]
+
+    # --- GET OBJECT HELPER ---
+    # A helper method to fetch a single card by its ID primary key, or raise a 404 error if it doesn't exist.
+    def get_object(self, pk):
+        # We place our query inside a try-except block to handle cases where a user requests an ID that doesn't exist.
+        try:
+            # We look up the Card record where the primary key (pk) matches the pk variable in the URL.
+            return Card.objects.get(pk=pk)
+        except Card.DoesNotExist:
+            # If no Card record matches the given ID, Django raises a DoesNotExist exception.
+            # We intercept this and raise Http404, which DRF catches and converts to a neat 404 response.
+            raise Http404
+
+    # --- GET METHOD ---
+    # This method responds to HTTP GET requests for a single card (e.g., GET /api/cards/5/).
+    def get(self, request, pk):
+        # We call our get_object helper to fetch the card or raise a 404 if it is missing.
+        card = self.get_object(pk)
+
+        # We pass the single card record to our CardSerializer.
+        serializer = CardSerializer(card)
+
+        # We return the translated JSON card data to the client with a standard 200 OK status.
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # --- PUT METHOD ---
+    # This method responds to HTTP PUT requests to update an existing card (e.g., PUT /api/cards/5/).
+    # In Kanban, this is extremely important, as updating the 'column' ID moves the card across list boards!
+    def put(self, request, pk):
+        # We fetch the specific card we want to edit or fail with a 404 if it does not exist.
+        card = self.get_object(pk)
+
+        # We feed the existing card object AND the new request data into our serializer.
+        # partial=True allows the client to send only the fields they want to change (like moving column or ordering).
+        serializer = CardSerializer(card, data=request.data, partial=True)
+
+        # We check if the updated data is valid.
+        if serializer.is_valid():
+            # If valid, we save the changes to the database.
+            serializer.save()
+            # Return the updated serialized card data with a 200 OK status so the client knows it moved.
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        # If validation fails, return the error details with a 400 Bad Request status.
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # --- DELETE METHOD ---
+    # This method responds to HTTP DELETE requests to delete a card (e.g., DELETE /api/cards/5/).
+    def delete(self, request, pk):
+        # We fetch the card or raise a 404 Not Found if the card ID does not exist in our database.
+        card = self.get_object(pk)
+
+        # We call the model's delete() method to remove the card row from our database.
+        card.delete()
+
+        # We return a Response with an HTTP 204 No Content status.
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+

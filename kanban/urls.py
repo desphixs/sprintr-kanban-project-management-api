@@ -8,7 +8,8 @@ from kanban.views import (
     BoardListAPIView,
     BoardDetailAPIView,
     ColumnListAPIView,
-    CardListAPIView
+    CardListAPIView,
+    CardDetailAPIView
 )
 
 # Define a list of URL routing patterns specific to the kanban application.
@@ -23,7 +24,7 @@ urlpatterns = [
 
     # --- SPECIFIC PROJECT DETAIL ROUTE ---
     # This route contains a dynamic URL parameter: <int:pk>.
-    # - '<int:pk>' tells Django to capture whatever integer is written in that segment of the URL
+    # - '<int:pk>' tells Django to capture whatever integer is written in segment of the URL
     #   (e.g., /api/projects/15/) and pass it to our view method as a keyword argument named 'pk'.
     # DRF routes requests with this format to ProjectDetailAPIView.as_view() so it can handle single records.
     # We set name='project-detail' as the unique label for this specific detail route.
@@ -53,5 +54,12 @@ urlpatterns = [
     # .as_view() registers the class-based view so it receives standard GET and POST requests.
     # We label this route as name='card-list' for easy dynamic lookup.
     path('cards/', CardListAPIView.as_view(), name='card-list'),
+
+    # --- SPECIFIC CARD DETAIL ROUTE ---
+    # This route contains the dynamic URL parameter: <int:pk>.
+    # Any GET, PUT, or DELETE request targeting a single card (e.g. /api/cards/7/)
+    # will automatically parse the number 7 and pass it to CardDetailAPIView as the 'pk' argument.
+    # We label this route as name='card-detail' for dynamic URL reversing.
+    path('cards/<int:pk>/', CardDetailAPIView.as_view(), name='card-detail'),
 ]
 
