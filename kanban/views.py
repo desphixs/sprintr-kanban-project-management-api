@@ -13,11 +13,11 @@ from rest_framework.permissions import IsAuthenticated
 # Import the Django built-in Http404 exception to trigger neat 404 Not Found responses easily
 from django.http import Http404
 
-# Import our Project and Board models from models.py inside the current app directory
-from kanban.models import Project, Board
+# Import our Project, Board, Column, and Card models from models.py inside the current app directory
+from kanban.models import Project, Board, Column, Card
 
-# Import our ProjectSerializer and BoardSerializer from serializers.py inside the current app directory
-from kanban.serializers import ProjectSerializer, BoardSerializer
+# Import our serializers from serializers.py inside the current app directory
+from kanban.serializers import ProjectSerializer, BoardSerializer, ColumnSerializer, CardSerializer
 
 
 # --- PROJECT LIST API VIEW ---
@@ -283,4 +283,132 @@ class BoardDetailAPIView(APIView):
 
         # We return a Response with an HTTP 204 No Content status.
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# --- COLUMN LIST API VIEW ---
+# This class handles requests targeting the collection of columns (listing them and creating a new one).
+class ColumnListAPIView(APIView):
+    # We assign [IsAuthenticated] to permission_classes to ensure that only logged-in users
+    # with a valid JSON Web Token (JWT) can access this endpoint!
+    permission_classes = [IsAuthenticated]
+
+    # --- GET METHOD ---
+    # This method responds to HTTP GET requests. It retrieves and lists all existing columns.
+    def get(self, request):
+        # We query the database to fetch every single Column record currently saved.
+        # Column.objects.all() executes a SELECT * FROM kanban_column query.
+        columns = Column.objects.all()
+
+        # We pass our list of column objects into the ColumnSerializer translator.
+        # We set many=True because we are translating a list of multiple column records, not a single one.
+        serializer = ColumnSerializer(columns, many=True)
+
+        # We return the translated JSON data inside a Response object with status 200 OK.
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # --- POST METHOD ---
+    # This method responds to HTTP POST requests. It allows logged-in users to create a brand new column.
+    def post(self, request):
+        # We extract the board ID value from the client's request data payload.
+        # This ID specifies which parent Board this new column should belong to.
+        board_id = request.data.get('board')
+
+        # We manually verify if a 'board' field was even sent in the request payload.
+        if not board_id:
+            # If the board field is missing, return a validation error with status 400 Bad Request.
+            return Response(
+                {"board": ["This field is required to create a column."]},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # We verify that the specified board ID actually exists in our Board database table.
+        try:
+            board = Board.objects.get(pk=board_id)
+        except Board.DoesNotExist:
+            # If the query fails, it means the board ID is invalid or doesn't exist.
+            # We return a clear error response explaining that the parent board wasn't found.
+            return Response(
+                {"board": ["The specified parent board does not exist."]},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # We pass the raw data sent by the client into the ColumnSerializer.
+        # This prepares the serializer to validate and translate the client's inputs.
+        serializer = ColumnSerializer(data=request.data)
+
+        # We call serializer.is_valid() to check if the incoming data meets all our constraints (e.g., title is provided).
+        if serializer.is_valid():
+            # If the data is valid, we call serializer.save() to write the new column record into the database.
+            serializer.save()
+
+            # We return the newly created and saved column's serialized data back to the client.
+            # We return a status code of 201 Created to signify a successful resource creation.
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        # If validation fails, return the error details with a 400 Bad Request status.
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# --- CARD LIST API VIEW ---
+# This class handles requests targeting the collection of cards (listing them and creating a new one).
+class CardListAPIView(APIView):
+    # We assign [IsAuthenticated] to permission_classes to ensure that only logged-in users
+    # with a valid JSON Web Token (JWT) can access this endpoint!
+    permission_classes = [IsAuthenticated]
+
+    # --- GET METHOD ---
+    # This method responds to HTTP GET requests. It retrieves and lists all existing cards.
+    def get(self, request):
+        # We query the database to fetch every single Card record currently saved.
+        # Card.objects.all() executes a SELECT * FROM kanban_card query.
+        cards = Card.objects.all()
+
+        # We pass our list of card objects into the CardSerializer translator.
+        # We set many=True because we are translating a list of multiple card records, not a single one.
+        serializer = CardSerializer(cards, many=True)
+
+        # We return the translated JSON data inside a Response object with status 200 OK.
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    # --- POST METHOD ---
+    # This method responds to HTTP POST requests. It allows logged-in users to create a brand new card.
+    def post(self, request):
+        # We extract the column ID value from the client's request data payload.
+        # This ID specifies which parent Column this new card should belong to.
+        column_id = request.data.get('column')
+
+        # We manually verify if a 'column' field was even sent in the request payload.
+        if not column_id:
+            # If the column field is missing, return a validation error with status 400 Bad Request.
+            return Response(
+                {"column": ["This field is required to create a card."]},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # We verify that the specified column ID actually exists in our Column database table.
+        try:
+            column = Column.objects.get(pk=column_id)
+        except Column.DoesNotExist:
+            # If the query fails, it means the column ID is invalid or doesn't exist.
+            # We return a clear error response explaining that the parent column wasn't found.
+            return Response(
+                {"column": ["The specified parent column does not exist."]},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # We pass the raw data sent by the client into the CardSerializer.
+        # This prepares the serializer to validate and translate the client's inputs.
+        serializer = CardSerializer(data=request.data)
+
+        # We call serializer.is_valid() to check if the incoming data meets all our constraints (e.g., title is provided).
+        if serializer.is_valid():
+            # If the data is valid, we call serializer.save() to write the new card record into the database.
+            serializer.save()
+
+            # We return the newly created and saved card's serialized data back to the client.
+            # We return a status code of 201 Created to signify a successful resource creation.
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        # If validation fails, return the error details with a 400 Bad Request status.
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

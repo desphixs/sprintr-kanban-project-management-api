@@ -6,7 +6,9 @@ from kanban.views import (
     ProjectListAPIView, 
     ProjectDetailAPIView,
     BoardListAPIView,
-    BoardDetailAPIView
+    BoardDetailAPIView,
+    ColumnListAPIView,
+    CardListAPIView
 )
 
 # Define a list of URL routing patterns specific to the kanban application.
@@ -39,5 +41,17 @@ urlpatterns = [
     # will automatically parse the number 3 and pass it to BoardDetailAPIView as the 'pk' argument.
     # We label this route as name='board-detail' for dynamic URL reversing.
     path('boards/<int:pk>/', BoardDetailAPIView.as_view(), name='board-detail'),
+
+    # --- COLUMNS LIST & CREATE ROUTE ---
+    # When a client hits 'columns/', DRF routes the request to ColumnListAPIView.
+    # .as_view() registers the class-based view so it receives standard GET and POST requests.
+    # We label this route as name='column-list' for easy dynamic lookup.
+    path('columns/', ColumnListAPIView.as_view(), name='column-list'),
+
+    # --- CARDS LIST & CREATE ROUTE ---
+    # When a client hits 'cards/', DRF routes the request to CardListAPIView.
+    # .as_view() registers the class-based view so it receives standard GET and POST requests.
+    # We label this route as name='card-list' for easy dynamic lookup.
+    path('cards/', CardListAPIView.as_view(), name='card-list'),
 ]
 
